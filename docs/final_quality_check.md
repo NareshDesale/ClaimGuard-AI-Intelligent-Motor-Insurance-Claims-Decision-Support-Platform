@@ -26,6 +26,9 @@ This document records the current completion status for ClaimGuard AI.
   `/claims/{claim_id}/risk-assessment` now live in
   `src/api/routers/fraud.py`; shared claim validation context building
   lives in `src/api/claim_context.py`.
+- Claim registry routes were extracted: `/claims`,
+  `/claims/{claim_id}`, and `/claims/{claim_id}/documents` now live in
+  `src/api/routers/claims.py`.
 - VS Code tasks now use the project scripts instead of long raw commands.
 - `.gitignore` excludes virtual environments, `.env`, uploads, extracted files,
   field outputs, demo data, databases, model binaries, and vector stores.
