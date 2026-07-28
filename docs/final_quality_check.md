@@ -17,6 +17,9 @@ This document records the current completion status for ClaimGuard AI.
 - Streamlit dashboard styling was upgraded to a light, branded UI.
 - Claim-aware AI assistant was added with deterministic mode, optional
   Gemini generation, and optional policy RAG context.
+- Backend refactor has started incrementally: API schemas and cached
+  route dependencies were moved out of root `app.py` into `src/api/`
+  without changing existing endpoint paths.
 - VS Code tasks now use the project scripts instead of long raw commands.
 - `.gitignore` excludes virtual environments, `.env`, uploads, extracted files,
   field outputs, demo data, databases, model binaries, and vector stores.

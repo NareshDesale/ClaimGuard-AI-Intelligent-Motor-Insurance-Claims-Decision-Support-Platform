@@ -1,10 +1,8 @@
-from functools import lru_cache
 import logging
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import joblib
 import pandas as pd
 from fastapi import (
     Depends,
@@ -16,17 +14,35 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.config import configure_logging
+from src.api.dependencies import (
+    MODEL_PATH,
+    get_expected_features,
+    get_fraud_model_or_503,
+    get_policy_rag_service,
+    load_fraud_model,
+)
+from src.api.schemas import (
+    ALLOWED_REVIEW_DECISIONS,
+    AssessmentRequest,
+    ClaimAssistantRequest,
+    ClaimCreateRequest,
+    ClaimRequest,
+    ClaimUpdateRequest,
+    FieldCorrectionRequest,
+    PolicyQuestionRequest,
+    PredictionResponse,
+    ReviewDecisionRequest,
+    RiskAssessmentRequest,
+)
 from src.assessment.service import (
     generate_claim_assessment,
     load_assessment_result,
     save_assessment_result,
 )
 from src.llm.claim_assistant import run_claim_assistant
-from src.rag.service import PolicyRAGService
 from src.risk.service import (
     run_claim_risk_assessment,
 )
@@ -85,9 +101,6 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-MODEL_PATH = PROJECT_ROOT / "models" / "fraud_model.joblib"
-TRAINING_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "fraud_oracle.csv"
-TARGET_COLUMN = "FraudFound_P"
 
 
 # ---------------------------------------------------------
@@ -135,163 +148,6 @@ def startup() -> None:
 
 
 # ---------------------------------------------------------
-# Request and response models
-# ---------------------------------------------------------
-
-class ClaimRequest(BaseModel):
-    claim: dict[str, Any] = Field(
-        ...,
-        description="Vehicle-insurance claim attributes",
-    )
-
-
-class PredictionResponse(BaseModel):
-    prediction: int
-    prediction_label: str
-    fraud_probability: float
-    risk_level: str
-    threshold: float
-
-
-class PolicyQuestionRequest(BaseModel):
-    question: str = Field(
-        ...,
-        min_length=5,
-        max_length=500,
-        description="Question about the indexed motor policy",
-        examples=[
-            "What third-party liabilities are covered?"
-        ],
-    )
-
-    top_k: int = Field(
-        default=4,
-        ge=1,
-        le=8,
-        description="Number of policy chunks to retrieve",
-    )
-
-    min_similarity_score: float = Field(
-        default=0.25,
-        ge=-1.0,
-        le=1.0,
-        description=(
-            "Minimum semantic similarity required for a "
-            "retrieved policy chunk."
-        ),
-    )
-    claim_id: str | None = Field(
-        default=None,
-        min_length=3,
-        max_length=50,
-        description=(
-            "Optional claim ID for audit logging a policy RAG query."
-        ),
-    )
-
-
-class ClaimCreateRequest(BaseModel):
-    claim_id: str = Field(..., min_length=3, max_length=50)
-    policy_number: str | None = None
-    customer_name: str | None = None
-    vehicle_number: str | None = None
-    accident_date: str | None = None
-    reported_date: str | None = None
-    claimed_amount: float | None = None
-    status: str = "open"
-
-
-class ClaimUpdateRequest(BaseModel):
-    policy_number: str | None = None
-    customer_name: str | None = None
-    vehicle_number: str | None = None
-    accident_date: str | None = None
-    reported_date: str | None = None
-    claimed_amount: float | None = None
-    status: str | None = None
-
-
-class RiskAssessmentRequest(BaseModel):
-    manual_features: dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Optional manually supplied Oracle fraud-model "
-            "features."
-        ),
-    )
-
-
-class AssessmentRequest(BaseModel):
-    manual_features: dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Optional manually supplied Oracle fraud-model "
-            "features used when generating fraud risk."
-        ),
-    )
-    policy_findings: dict[str, Any] | None = Field(
-        default=None,
-        description=(
-            "Optional policy RAG result or manually supplied "
-            "policy findings to include in the assessment."
-        ),
-    )
-
-
-class ClaimAssistantRequest(BaseModel):
-    question: str = Field(
-        ...,
-        min_length=5,
-        max_length=800,
-        description=(
-            "Reviewer question about the claim, extracted data, "
-            "validation, assessment, or policy context."
-        ),
-    )
-    use_llm: bool = Field(
-        default=False,
-        description=(
-            "When true, Gemini is used to generate a grounded answer. "
-            "When false, the API returns a deterministic briefing."
-        ),
-    )
-    include_policy_context: bool = Field(
-        default=False,
-        description=(
-            "Retrieve relevant policy sources and include them in "
-            "assistant context without approving or rejecting claims."
-        ),
-    )
-    top_k: int = Field(default=4, ge=1, le=8)
-    min_similarity_score: float = Field(
-        default=0.25,
-        ge=-1.0,
-        le=1.0,
-    )
-
-
-class ReviewDecisionRequest(BaseModel):
-    reviewer_name: str = Field(..., min_length=1, max_length=200)
-    decision: str = Field(..., min_length=1, max_length=50)
-    comment: str | None = Field(default=None, max_length=2000)
-
-
-class FieldCorrectionRequest(BaseModel):
-    reviewer_name: str = Field(..., min_length=1, max_length=200)
-    corrected_value: str = Field(..., min_length=1, max_length=500)
-
-
-ALLOWED_REVIEW_DECISIONS = {
-    "normal_review",
-    "request_documents",
-    "escalate_investigation",
-    "data_correction",
-    "policy_review",
-    "closed_demo",
-}
-
-
-# ---------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------
 
@@ -307,86 +163,6 @@ def get_risk_level(probability: float) -> str:
         return "MEDIUM"
 
     return "HIGH"
-
-
-@lru_cache(maxsize=1)
-def load_fraud_model() -> Any:
-    """
-    Load the trained fraud model lazily.
-
-    The model binary is intentionally not committed to GitHub, so a
-    fresh clone must still be able to start and report a clear degraded
-    health state until the model is trained locally.
-    """
-
-    if not MODEL_PATH.exists():
-        raise RuntimeError(
-            f"Fraud model not found at {MODEL_PATH}. "
-            "Run 'python -m src.train_model' to train it."
-        )
-
-    return joblib.load(MODEL_PATH)
-
-
-def get_fraud_model_or_503() -> Any:
-    try:
-        return load_fraud_model()
-    except RuntimeError as error:
-        raise HTTPException(
-            status_code=503,
-            detail=str(error),
-        ) from error
-
-
-@lru_cache(maxsize=1)
-def get_expected_features() -> list[str]:
-    """
-    Return fraud-model feature names without requiring the binary model.
-    """
-
-    if MODEL_PATH.exists():
-        try:
-            loaded_model = load_fraud_model()
-            feature_names = getattr(
-                loaded_model,
-                "feature_names_in_",
-                None,
-            )
-            if feature_names is not None:
-                return list(feature_names)
-        except Exception:
-            logger.warning(
-                "Unable to read feature names from fraud model.",
-                exc_info=True,
-            )
-
-    if TRAINING_DATA_PATH.exists():
-        dataframe = pd.read_csv(
-            TRAINING_DATA_PATH,
-            nrows=0,
-        )
-        return [
-            column
-            for column in dataframe.columns
-            if column not in {TARGET_COLUMN, "PolicyNumber"}
-        ]
-
-    raise RuntimeError(
-        "Fraud feature schema is unavailable. Provide either "
-        "models/fraud_model.joblib or data/raw/fraud_oracle.csv."
-    )
-
-
-@lru_cache(maxsize=1)
-def get_policy_rag_service() -> PolicyRAGService:
-    """
-    Load the embedding model and FAISS index once.
-
-    Caching prevents the Sentence Transformer and vector index
-    from being reloaded for every request.
-    """
-
-    return PolicyRAGService()
 
 
 # ---------------------------------------------------------
