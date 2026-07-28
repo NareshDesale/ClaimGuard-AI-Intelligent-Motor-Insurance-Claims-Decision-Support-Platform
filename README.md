@@ -197,6 +197,15 @@ The fraud model is loaded from:
 models/fraud_model.joblib
 ```
 
+The binary model is intentionally not committed to GitHub. A fresh
+clone starts in a degraded-but-runnable state and reports this through
+`GET /health`. Train the model locally before using prediction or risk
+assessment endpoints:
+
+```powershell
+.\.venv\Scripts\python.exe -m src.train_model
+```
+
 It expects the same feature columns used during training from the
 Oracle-style fraud dataset. Uploaded claim documents do not naturally
 contain all model features, so the risk-assessment endpoint reports:

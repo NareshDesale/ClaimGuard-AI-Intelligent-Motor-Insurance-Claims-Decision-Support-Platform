@@ -9,12 +9,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEST_CLAIM_PATH = PROJECT_ROOT / "test_claim.json"
 MODEL_PATH = PROJECT_ROOT / "models" / "fraud_model.joblib"
 
-if not MODEL_PATH.exists():
-    pytest.skip(
-        "fraud_model.joblib is required for app API tests",
-        allow_module_level=True,
-    )
-
 from app import app
 
 client = TestClient(app)
@@ -38,8 +32,8 @@ def test_health_endpoint() -> None:
 
     data = response.json()
 
-    assert data["status"] == "healthy"
-    assert data["fraud_model_loaded"] is True
+    assert data["status"] in {"healthy", "degraded"}
+    assert data["fraud_model_loaded"] is MODEL_PATH.exists()
     assert data["expected_feature_count"] > 0
 
 
@@ -76,6 +70,11 @@ def test_predict_rejects_missing_features() -> None:
 
 
 def test_predict_with_valid_claim() -> None:
+    if not MODEL_PATH.exists():
+        pytest.skip(
+            "fraud_model.joblib is required for valid prediction"
+        )
+
     assert TEST_CLAIM_PATH.exists(), (
         "test_claim.json does not exist. Run "
         "python src/create_test_request.py first."

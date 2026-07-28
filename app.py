@@ -86,19 +86,8 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 MODEL_PATH = PROJECT_ROOT / "models" / "fraud_model.joblib"
-
-
-if not MODEL_PATH.exists():
-    raise FileNotFoundError(
-        f"Model not found at {MODEL_PATH}. "
-        "Run src/train_model.py first."
-    )
-
-
-model = joblib.load(MODEL_PATH)
-
-# Columns used while training the fraud model.
-EXPECTED_FEATURES = list(model.feature_names_in_)
+TRAINING_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "fraud_oracle.csv"
+TARGET_COLUMN = "FraudFound_P"
 
 
 # ---------------------------------------------------------
@@ -321,6 +310,74 @@ def get_risk_level(probability: float) -> str:
 
 
 @lru_cache(maxsize=1)
+def load_fraud_model() -> Any:
+    """
+    Load the trained fraud model lazily.
+
+    The model binary is intentionally not committed to GitHub, so a
+    fresh clone must still be able to start and report a clear degraded
+    health state until the model is trained locally.
+    """
+
+    if not MODEL_PATH.exists():
+        raise RuntimeError(
+            f"Fraud model not found at {MODEL_PATH}. "
+            "Run 'python -m src.train_model' to train it."
+        )
+
+    return joblib.load(MODEL_PATH)
+
+
+def get_fraud_model_or_503() -> Any:
+    try:
+        return load_fraud_model()
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=str(error),
+        ) from error
+
+
+@lru_cache(maxsize=1)
+def get_expected_features() -> list[str]:
+    """
+    Return fraud-model feature names without requiring the binary model.
+    """
+
+    if MODEL_PATH.exists():
+        try:
+            loaded_model = load_fraud_model()
+            feature_names = getattr(
+                loaded_model,
+                "feature_names_in_",
+                None,
+            )
+            if feature_names is not None:
+                return list(feature_names)
+        except Exception:
+            logger.warning(
+                "Unable to read feature names from fraud model.",
+                exc_info=True,
+            )
+
+    if TRAINING_DATA_PATH.exists():
+        dataframe = pd.read_csv(
+            TRAINING_DATA_PATH,
+            nrows=0,
+        )
+        return [
+            column
+            for column in dataframe.columns
+            if column not in {TARGET_COLUMN, "PolicyNumber"}
+        ]
+
+    raise RuntimeError(
+        "Fraud feature schema is unavailable. Provide either "
+        "models/fraud_model.joblib or data/raw/fraud_oracle.csv."
+    )
+
+
+@lru_cache(maxsize=1)
 def get_policy_rag_service() -> PolicyRAGService:
     """
     Load the embedding model and FAISS index once.
@@ -346,10 +403,27 @@ def root() -> dict[str, str]:
 
 @app.get("/health")
 def health_check() -> dict[str, Any]:
+    expected_features = get_expected_features()
+    fraud_model_loaded = MODEL_PATH.exists()
+
     return {
-        "status": "healthy",
-        "fraud_model_loaded": True,
-        "expected_feature_count": len(EXPECTED_FEATURES),
+        "status": (
+            "healthy"
+            if fraud_model_loaded
+            else "degraded"
+        ),
+        "fraud_model_loaded": fraud_model_loaded,
+        "expected_feature_count": len(expected_features),
+        "model_path": str(MODEL_PATH.relative_to(PROJECT_ROOT)),
+        "model_message": (
+            "Fraud model is available."
+            if fraud_model_loaded
+            else (
+                "Fraud model is not present. Run "
+                "'python -m src.train_model' before using "
+                "prediction endpoints."
+            )
+        ),
     }
 
 
@@ -658,15 +732,30 @@ def generate_claim_assessment_endpoint(
         )
 
     request_data = request or AssessmentRequest()
-    fraud_risk = run_claim_risk_assessment(
-        claim_id=claim_id,
-        claim=model_to_dict(claim),
-        documents=validation_documents,
-        manual_features=request_data.manual_features,
-        expected_features=EXPECTED_FEATURES,
-        model=model,
-        model_path=MODEL_PATH,
-    )
+    try:
+        fraud_risk = run_claim_risk_assessment(
+            claim_id=claim_id,
+            claim=model_to_dict(claim),
+            documents=validation_documents,
+            manual_features=request_data.manual_features,
+            expected_features=get_expected_features(),
+            model=load_fraud_model(),
+            model_path=MODEL_PATH,
+        )
+    except RuntimeError as error:
+        fraud_risk = {
+            "claim_id": claim_id,
+            "status": "model_unavailable",
+            "fraud_probability": None,
+            "prediction": None,
+            "risk_level": "NOT_ASSESSED",
+            "threshold": 0.5,
+            "model_version": None,
+            "features_used": {},
+            "missing_features": get_expected_features(),
+            "warnings": [str(error)],
+            "important_risk_factors": [],
+        }
     result = generate_claim_assessment(
         claim_metadata=model_to_dict(claim),
         documents=document_payloads,
@@ -986,9 +1075,16 @@ def correct_document_field_endpoint(
 
 @app.get("/model/features")
 def get_model_features() -> dict[str, Any]:
+    expected_features = get_expected_features()
+
     return {
-        "feature_count": len(EXPECTED_FEATURES),
-        "features": EXPECTED_FEATURES,
+        "feature_count": len(expected_features),
+        "features": expected_features,
+        "source": (
+            "model"
+            if MODEL_PATH.exists()
+            else "training_dataset_schema"
+        ),
     }
 
 
@@ -1004,10 +1100,11 @@ def predict_fraud(
     """
 
     claim_data = request.claim
+    expected_features = get_expected_features()
 
     missing_features = [
         feature
-        for feature in EXPECTED_FEATURES
+        for feature in expected_features
         if feature not in claim_data
     ]
 
@@ -1020,10 +1117,12 @@ def predict_fraud(
             },
         )
 
+    fraud_model = get_fraud_model_or_503()
+
     # Ignore unknown fields and preserve the training column order.
     ordered_claim = {
         feature: claim_data[feature]
-        for feature in EXPECTED_FEATURES
+        for feature in expected_features
     }
 
     claim_dataframe = pd.DataFrame(
@@ -1031,11 +1130,11 @@ def predict_fraud(
     )
 
     try:
-        probabilities = model.predict_proba(
+        probabilities = fraud_model.predict_proba(
             claim_dataframe
         )[0]
 
-        classes = list(model.classes_)
+        classes = list(fraud_model.classes_)
 
         if 1 not in classes:
             raise ValueError(
@@ -1114,10 +1213,15 @@ def assess_claim_risk_endpoint(
             claim=model_to_dict(claim),
             documents=validation_documents,
             manual_features=manual_features,
-            expected_features=EXPECTED_FEATURES,
-            model=model,
+            expected_features=get_expected_features(),
+            model=load_fraud_model(),
             model_path=MODEL_PATH,
         )
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Risk assessment failed: {error}",
+        ) from error
     except Exception as error:
         raise HTTPException(
             status_code=400,
