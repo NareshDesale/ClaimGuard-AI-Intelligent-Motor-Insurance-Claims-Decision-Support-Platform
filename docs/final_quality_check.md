@@ -22,6 +22,10 @@ This document records the current completion status for ClaimGuard AI.
   without changing existing endpoint paths.
 - The first API router was extracted: `/`, `/health`, and
   `/model/features` now live in `src/api/routers/health.py`.
+- Fraud API routes were extracted: `/predict` and
+  `/claims/{claim_id}/risk-assessment` now live in
+  `src/api/routers/fraud.py`; shared claim validation context building
+  lives in `src/api/claim_context.py`.
 - VS Code tasks now use the project scripts instead of long raw commands.
 - `.gitignore` excludes virtual environments, `.env`, uploads, extracted files,
   field outputs, demo data, databases, model binaries, and vector stores.
