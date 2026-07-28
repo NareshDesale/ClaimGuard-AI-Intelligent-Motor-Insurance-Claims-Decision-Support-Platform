@@ -1,0 +1,23 @@
+[
+  {
+    "question": "What third-party liabilities are covered under the private car policy?",
+    "expected_pages": [2],
+    "expected_keywords": ["liability", "third party", "indemnify"],
+    "answerable": true,
+    "category": "coverage"
+  },
+  {
+    "question": "What documents are required after an accident claim?",
+    "expected_pages": [8, 9],
+    "expected_keywords": ["claim", "notice", "accident", "documents"],
+    "answerable": true,
+    "category": "claims"
+  },
+  {
+    "question": "Does this policy cover routine engine oil replacement?",
+    "expected_pages": [],
+    "expected_keywords": [],
+    "answerable": false,
+    "category": "unrelated_or_insufficient"
+  }
+]

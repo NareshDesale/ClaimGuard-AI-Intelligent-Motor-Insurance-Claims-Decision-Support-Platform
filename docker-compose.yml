@@ -1,0 +1,68 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: claimguard-ai:local
+    command:
+      - uvicorn
+      - app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    ports:
+      - "8000:8000"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      DATABASE_URL: sqlite:////app/data/claimguard.db
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-10}
+      OCR_ENABLED: ${OCR_ENABLED:-true}
+      OCR_LANGUAGES: ${OCR_LANGUAGES:-en}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models:ro
+      - ./vector_store:/app/vector_store:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()"
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  streamlit:
+    image: claimguard-ai:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - streamlit
+      - run
+      - frontend/streamlit_app.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --server.headless=true
+    ports:
+      - "8501:8501"
+    environment:
+      CLAIMGUARD_API_URL: http://backend:8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=5).read()"
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3

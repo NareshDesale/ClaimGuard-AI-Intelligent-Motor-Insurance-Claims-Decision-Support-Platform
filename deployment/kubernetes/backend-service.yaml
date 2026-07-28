@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: claimguard-backend
+  namespace: claimguard-ai
+  labels:
+    app.kubernetes.io/name: claimguard-ai
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: claimguard-ai
+    app.kubernetes.io/component: backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

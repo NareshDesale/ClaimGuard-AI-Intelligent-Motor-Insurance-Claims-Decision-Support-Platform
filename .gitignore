@@ -1,0 +1,29 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+requirements-local.txt
+
+# Secret environment variables
+.env
+.env.*
+!.env.example
+
+# Generated vector database
+vector_store/
+
+# Trained model files
+models/*.joblib
+
+# Uploaded and generated claim artifacts
+data/uploads/
+data/extracted/
+data/fields/
+data/validation/
+data/assessments/
+data/demo/
+data/*.db
+data/*.db-*

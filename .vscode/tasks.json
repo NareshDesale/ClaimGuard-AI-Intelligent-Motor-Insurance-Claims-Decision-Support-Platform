@@ -1,0 +1,81 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ClaimGuard: setup Windows environment",
+      "type": "shell",
+      "command": ".\\scripts\\setup_windows.ps1 -RecreateVenv",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ClaimGuard: generate demo data",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe scripts\\generate_demo_data.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ClaimGuard: run backend",
+      "type": "shell",
+      "command": ".\\scripts\\run_backend.ps1",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "ClaimGuard: run Streamlit",
+      "type": "shell",
+      "command": ".\\scripts\\run_frontend.ps1",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "ClaimGuard: run tests",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe -m pytest tests -v --tb=short -m \"not integration\"",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "ClaimGuard: syntax check",
+      "type": "shell",
+      "command": "$files = @(rg --files -g '*.py'); .venv\\Scripts\\python.exe -m py_compile @files",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ClaimGuard: Docker Compose config",
+      "type": "shell",
+      "command": "docker compose config --quiet",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ClaimGuard: Docker Compose up",
+      "type": "shell",
+      "command": "docker compose up --build",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

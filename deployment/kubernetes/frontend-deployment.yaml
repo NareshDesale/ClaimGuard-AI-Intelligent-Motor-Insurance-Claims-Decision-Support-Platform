@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claimguard-frontend
+  namespace: claimguard-ai
+  labels:
+    app.kubernetes.io/name: claimguard-ai
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: claimguard-ai
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: claimguard-ai
+        app.kubernetes.io/component: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: frontend
+          image: claimguard-ai:local
+          imagePullPolicy: IfNotPresent
+          command:
+            - streamlit
+            - run
+            - frontend/streamlit_app.py
+            - --server.address=0.0.0.0
+            - --server.port=8501
+            - --server.headless=true
+          ports:
+            - name: http
+              containerPort: 8501
+          env:
+            - name: CLAIMGUARD_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: claimguard-config
+                  key: CLAIMGUARD_API_URL
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: claimguard-config
+                  key: LOG_LEVEL
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

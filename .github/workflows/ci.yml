@@ -1,0 +1,101 @@
+name: ClaimGuard AI CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Syntax And Tests
+    runs-on: ubuntu-latest
+
+    env:
+      GEMINI_API_KEY: ""
+      GEMINI_MODEL: gemini-3.6-flash
+      DATABASE_URL: sqlite:///data/claimguard-ci.db
+      MAX_UPLOAD_SIZE_MB: "10"
+      OCR_ENABLED: "true"
+      OCR_LANGUAGES: en
+      LOG_LEVEL: INFO
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Normalize requirements encoding
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path("requirements.txt")
+          raw = source.read_bytes()
+          encoding = (
+              "utf-16"
+              if raw.startswith((b"\xff\xfe", b"\xfe\xff"))
+              else "utf-8"
+          )
+          Path("requirements-ci.txt").write_text(
+              raw.decode(encoding),
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-ci.txt
+
+      - name: Run syntax checks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import py_compile
+
+          excluded_parts = {
+              ".git",
+              "venv",
+              ".venv",
+              "__pycache__",
+              ".pytest_cache",
+          }
+
+          for path in Path(".").rglob("*.py"):
+              if excluded_parts.intersection(path.parts):
+                  continue
+              py_compile.compile(str(path), doraise=True)
+          PY
+
+      - name: Run pytest
+        run: python -m pytest tests -v --tb=short -m "not integration"
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build local Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          tags: claimguard-ai:ci
+          push: false

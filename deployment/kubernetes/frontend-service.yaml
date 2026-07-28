@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: claimguard-frontend
+  namespace: claimguard-ai
+  labels:
+    app.kubernetes.io/name: claimguard-ai
+    app.kubernetes.io/component: frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: claimguard-ai
+    app.kubernetes.io/component: frontend
+  ports:
+    - name: http
+      port: 8501
+      targetPort: http

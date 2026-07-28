@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claimguard-config
+  namespace: claimguard-ai
+  labels:
+    app.kubernetes.io/name: claimguard-ai
+data:
+  GEMINI_MODEL: gemini-3.6-flash
+  DATABASE_URL: sqlite:////app/data/claimguard.db
+  MAX_UPLOAD_SIZE_MB: "10"
+  OCR_ENABLED: "true"
+  OCR_LANGUAGES: en
+  LOG_LEVEL: INFO
+  CLAIMGUARD_API_URL: http://claimguard-backend:8000
