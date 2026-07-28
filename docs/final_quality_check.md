@@ -41,6 +41,8 @@ This document records the current completion status for ClaimGuard AI.
   live in `src/api/routers/documents.py`.
 - Root `app.py` is now a thin FastAPI setup file with router
   registration, request-ID middleware, and startup initialization.
+- FastAPI app creation moved into `src/api/main.py`; root `app.py`
+  remains a compatibility entrypoint for `uvicorn app:app` and tests.
 - VS Code tasks now use the project scripts instead of long raw commands.
 - `.gitignore` excludes virtual environments, `.env`, uploads, extracted files,
   field outputs, demo data, databases, model binaries, and vector stores.

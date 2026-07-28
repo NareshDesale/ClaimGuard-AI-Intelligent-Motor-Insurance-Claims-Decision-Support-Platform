@@ -15,6 +15,7 @@ if not MODEL_PATH.exists():
     )
 
 import app as app_module
+from src.api.routers import rag as rag_router_module
 
 
 client = TestClient(app_module.app)
@@ -106,7 +107,7 @@ def get_mock_rag_service() -> MockPolicyRAGService:
 
 def test_rag_health(monkeypatch) -> None:
     monkeypatch.setattr(
-        app_module,
+        rag_router_module,
         "get_policy_rag_service",
         get_mock_rag_service,
     )
@@ -125,7 +126,7 @@ def test_rag_health(monkeypatch) -> None:
 
 def test_rag_ask(monkeypatch) -> None:
     monkeypatch.setattr(
-        app_module,
+        rag_router_module,
         "get_policy_rag_service",
         get_mock_rag_service,
     )
@@ -154,7 +155,7 @@ def test_rag_ask(monkeypatch) -> None:
 
 def test_rag_retrieve(monkeypatch) -> None:
     monkeypatch.setattr(
-        app_module,
+        rag_router_module,
         "get_policy_rag_service",
         get_mock_rag_service,
     )
