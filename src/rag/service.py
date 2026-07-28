@@ -17,18 +17,11 @@ from src.config import get_settings
 # ---------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SETTINGS = get_settings()
 
-INDEX_PATH = (
-    PROJECT_ROOT
-    / "vector_store"
-    / "policy.index"
-)
+INDEX_PATH = SETTINGS.vector_index_path
 
-CHUNKS_PATH = (
-    PROJECT_ROOT
-    / "vector_store"
-    / "policy_chunks.json"
-)
+CHUNKS_PATH = SETTINGS.vector_metadata_path
 
 DEFAULT_MODEL_NAME = "gemini-3.6-flash"
 DEFAULT_TOP_K = 4

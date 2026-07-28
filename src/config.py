@@ -1,8 +1,11 @@
-import logging
-import os
-from dataclasses import dataclass
+from __future__ import annotations
+
 from functools import lru_cache
+import logging
 from pathlib import Path
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -11,115 +14,68 @@ DEFAULT_DATABASE_PATH = PROJECT_ROOT / "data" / "claimguard.db"
 DEFAULT_DATABASE_URL = f"sqlite:///{DEFAULT_DATABASE_PATH.as_posix()}"
 
 
-def load_env_file(path: Path = ENV_PATH) -> dict[str, str]:
-    if not path.exists():
-        return {}
+def resolve_project_path(value: str | Path) -> Path:
+    """Resolve relative settings paths from the repository root."""
 
-    values: dict[str, str] = {}
+    path = Path(value)
 
-    with path.open("r", encoding="utf-8") as env_file:
-        for raw_line in env_file:
-            line = raw_line.strip()
+    if path.is_absolute():
+        return path
 
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-
-            if key:
-                values[key] = value
-
-    return values
+    return PROJECT_ROOT / path
 
 
-def get_env_value(
-    key: str,
-    default: str | None = None,
-) -> str | None:
-    return os.getenv(
-        key,
-        load_env_file().get(key, default),
-    )
+class Settings(BaseSettings):
+    app_name: str = "ClaimGuard AI"
+    app_env: str = "local"
 
-
-def parse_bool(value: str | None, default: bool) -> bool:
-    if value is None:
-        return default
-
-    normalized = value.strip().lower()
-
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-
-    return default
-
-
-def parse_int(
-    value: str | None,
-    default: int,
-    minimum: int,
-    maximum: int,
-) -> int:
-    if value is None:
-        return default
-
-    try:
-        parsed = int(value)
-    except ValueError:
-        return default
-
-    return min(
-        max(parsed, minimum),
-        maximum,
-    )
-
-
-@dataclass(frozen=True)
-class Settings:
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.6-flash"
+
     database_url: str = DEFAULT_DATABASE_URL
-    max_upload_size_mb: int = 10
+
+    max_upload_size_mb: int = Field(default=10, ge=1, le=100)
     ocr_enabled: bool = True
     ocr_languages: str = "en"
+    max_pdf_pages: int = Field(default=50, ge=1, le=500)
+    max_image_width: int = Field(default=8000, ge=1, le=50000)
+    max_image_height: int = Field(default=8000, ge=1, le=50000)
+    max_image_pixels: int = Field(
+        default=25_000_000,
+        ge=1,
+        le=500_000_000,
+    )
+
     log_level: str = "INFO"
+
+    fraud_model_path: Path = Path("models/fraud_model.joblib")
+    training_data_path: Path = Path("data/raw/fraud_oracle.csv")
+    vector_index_path: Path = Path("vector_store/policy.index")
+    vector_metadata_path: Path = Path("vector_store/policy_chunks.json")
+
+    cors_allowed_origins: str = "http://localhost:8501,http://127.0.0.1:8501"
+
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_PATH),
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
 
     @classmethod
     def from_environment(cls) -> "Settings":
-        return cls(
-            gemini_api_key=get_env_value("GEMINI_API_KEY"),
-            gemini_model=(
-                get_env_value("GEMINI_MODEL", "gemini-3.6-flash")
-                or "gemini-3.6-flash"
-            ),
-            database_url=(
-                get_env_value("DATABASE_URL", DEFAULT_DATABASE_URL)
-                or DEFAULT_DATABASE_URL
-            ),
-            max_upload_size_mb=parse_int(
-                get_env_value("MAX_UPLOAD_SIZE_MB"),
-                default=10,
-                minimum=1,
-                maximum=100,
-            ),
-            ocr_enabled=parse_bool(
-                get_env_value("OCR_ENABLED"),
-                default=True,
-            ),
-            ocr_languages=(
-                get_env_value("OCR_LANGUAGES", "en")
-                or "en"
-            ),
-            log_level=(
-                get_env_value("LOG_LEVEL", "INFO")
-                or "INFO"
-            ),
-        )
+        return cls()
+
+    @field_validator(
+        "fraud_model_path",
+        "training_data_path",
+        "vector_index_path",
+        "vector_metadata_path",
+        mode="after",
+    )
+    @classmethod
+    def resolve_paths(cls, value: Path) -> Path:
+        return resolve_project_path(value)
 
     @property
     def ocr_language_list(self) -> list[str]:
@@ -134,6 +90,16 @@ class Settings:
     @property
     def max_upload_size_bytes(self) -> int:
         return self.max_upload_size_mb * 1024 * 1024
+
+    @property
+    def cors_allowed_origin_list(self) -> list[str]:
+        origins = [
+            origin.strip()
+            for origin in self.cors_allowed_origins.split(",")
+            if origin.strip()
+        ]
+
+        return origins
 
 
 @lru_cache(maxsize=1)

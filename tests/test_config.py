@@ -8,6 +8,7 @@ from src.config import (
 def test_settings_reads_environment_values(
     monkeypatch,
 ) -> None:
+    get_settings.cache_clear()
     monkeypatch.setenv(
         "GEMINI_MODEL",
         "gemini-test-model",
@@ -32,6 +33,22 @@ def test_settings_reads_environment_values(
         "LOG_LEVEL",
         "DEBUG",
     )
+    monkeypatch.setenv(
+        "MAX_PDF_PAGES",
+        "12",
+    )
+    monkeypatch.setenv(
+        "MAX_IMAGE_WIDTH",
+        "4000",
+    )
+    monkeypatch.setenv(
+        "MAX_IMAGE_HEIGHT",
+        "3000",
+    )
+    monkeypatch.setenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:8501,http://example.test",
+    )
 
     settings = Settings.from_environment()
 
@@ -41,6 +58,14 @@ def test_settings_reads_environment_values(
     assert settings.ocr_enabled is False
     assert settings.ocr_language_list == ["en", "hi"]
     assert settings.log_level == "DEBUG"
+    assert settings.max_pdf_pages == 12
+    assert settings.max_image_width == 4000
+    assert settings.max_image_height == 3000
+    assert settings.cors_allowed_origin_list == [
+        "http://localhost:8501",
+        "http://example.test",
+    ]
+    assert settings.fraud_model_path.is_absolute()
 
 
 def test_get_settings_is_cached() -> None:

@@ -154,13 +154,24 @@ executable explicitly:
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
+| `APP_NAME` | Application display name | `ClaimGuard AI` |
+| `APP_ENV` | Runtime environment label | `local` |
 | `GEMINI_API_KEY` | Gemini API key for RAG answer generation | empty |
 | `GEMINI_MODEL` | Gemini model name | `gemini-3.6-flash` |
 | `DATABASE_URL` | SQLAlchemy database URL | `sqlite:///data/claimguard.db` |
 | `MAX_UPLOAD_SIZE_MB` | Upload size limit | `10` |
 | `OCR_ENABLED` | Enables OCR fallback | `true` |
 | `OCR_LANGUAGES` | Comma-separated EasyOCR languages | `en` |
+| `MAX_PDF_PAGES` | Maximum uploaded PDF pages | `50` |
+| `MAX_IMAGE_WIDTH` | Maximum uploaded image width | `8000` |
+| `MAX_IMAGE_HEIGHT` | Maximum uploaded image height | `8000` |
+| `MAX_IMAGE_PIXELS` | Maximum uploaded image pixel count | `25000000` |
 | `LOG_LEVEL` | Python logging level | `INFO` |
+| `FRAUD_MODEL_PATH` | Trained fraud model path | `models/fraud_model.joblib` |
+| `TRAINING_DATA_PATH` | Fraud training dataset path | `data/raw/fraud_oracle.csv` |
+| `VECTOR_INDEX_PATH` | FAISS index path | `vector_store/policy.index` |
+| `VECTOR_METADATA_PATH` | Policy chunk metadata path | `vector_store/policy_chunks.json` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins | `http://localhost:8501,http://127.0.0.1:8501` |
 | `CLAIMGUARD_API_URL` | Streamlit backend URL | `http://localhost:8000` |
 
 ## Run The Backend

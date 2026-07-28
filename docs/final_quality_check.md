@@ -43,6 +43,9 @@ This document records the current completion status for ClaimGuard AI.
   registration, request-ID middleware, and startup initialization.
 - FastAPI app creation moved into `src/api/main.py`; root `app.py`
   remains a compatibility entrypoint for `uvicorn app:app` and tests.
+- Centralized configuration was upgraded to `pydantic-settings`, with
+  upload limits, OCR settings, model paths, vector-store paths, and CORS
+  origins controlled through environment variables.
 - VS Code tasks now use the project scripts instead of long raw commands.
 - `.gitignore` excludes virtual environments, `.env`, uploads, extracted files,
   field outputs, demo data, databases, model binaries, and vector stores.

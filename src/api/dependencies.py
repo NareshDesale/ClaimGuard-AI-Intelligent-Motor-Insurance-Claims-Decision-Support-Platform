@@ -9,14 +9,16 @@ import joblib
 import pandas as pd
 from fastapi import HTTPException
 
+from src.config import get_settings
 from src.rag.service import PolicyRAGService
 
 
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-MODEL_PATH = PROJECT_ROOT / "models" / "fraud_model.joblib"
-TRAINING_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "fraud_oracle.csv"
+SETTINGS = get_settings()
+MODEL_PATH = SETTINGS.fraud_model_path
+TRAINING_DATA_PATH = SETTINGS.training_data_path
 TARGET_COLUMN = "FraudFound_P"
 
 
