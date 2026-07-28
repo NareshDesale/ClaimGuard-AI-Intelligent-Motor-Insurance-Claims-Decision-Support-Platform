@@ -32,6 +32,15 @@ This document records the current completion status for ClaimGuard AI.
 - Validation routes were extracted: completeness, validation execution,
   and saved validation retrieval now live in
   `src/api/routers/validation.py`.
+- Assessment and claim-assistant routes now live in
+  `src/api/routers/assessment.py`.
+- Human review, field correction, and audit-log routes now live in
+  `src/api/routers/reviews.py`.
+- Policy RAG routes now live in `src/api/routers/rag.py`.
+- Document type, upload, extraction, and field extraction routes now
+  live in `src/api/routers/documents.py`.
+- Root `app.py` is now a thin FastAPI setup file with router
+  registration, request-ID middleware, and startup initialization.
 - VS Code tasks now use the project scripts instead of long raw commands.
 - `.gitignore` excludes virtual environments, `.env`, uploads, extracted files,
   field outputs, demo data, databases, model binaries, and vector stores.
