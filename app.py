@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -37,6 +36,7 @@ from src.api.schemas import (
     ReviewDecisionRequest,
     RiskAssessmentRequest,
 )
+from src.api.routers.health import router as health_router
 from src.assessment.service import (
     generate_claim_assessment,
     load_assessment_result,
@@ -100,8 +100,6 @@ from src.documents.fields import (
 configure_logging()
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-
 
 # ---------------------------------------------------------
 # FastAPI application
@@ -115,6 +113,8 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+app.include_router(health_router)
 
 
 @app.middleware("http")
@@ -163,44 +163,6 @@ def get_risk_level(probability: float) -> str:
         return "MEDIUM"
 
     return "HIGH"
-
-
-# ---------------------------------------------------------
-# General endpoints
-# ---------------------------------------------------------
-
-@app.get("/")
-def root() -> dict[str, str]:
-    return {
-        "message": "ClaimGuard AI API is running",
-        "documentation": "/docs",
-    }
-
-
-@app.get("/health")
-def health_check() -> dict[str, Any]:
-    expected_features = get_expected_features()
-    fraud_model_loaded = MODEL_PATH.exists()
-
-    return {
-        "status": (
-            "healthy"
-            if fraud_model_loaded
-            else "degraded"
-        ),
-        "fraud_model_loaded": fraud_model_loaded,
-        "expected_feature_count": len(expected_features),
-        "model_path": str(MODEL_PATH.relative_to(PROJECT_ROOT)),
-        "model_message": (
-            "Fraud model is available."
-            if fraud_model_loaded
-            else (
-                "Fraud model is not present. Run "
-                "'python -m src.train_model' before using "
-                "prediction endpoints."
-            )
-        ),
-    }
 
 
 # ---------------------------------------------------------
@@ -848,21 +810,6 @@ def correct_document_field_endpoint(
 # ---------------------------------------------------------
 # Fraud-model endpoints
 # ---------------------------------------------------------
-
-@app.get("/model/features")
-def get_model_features() -> dict[str, Any]:
-    expected_features = get_expected_features()
-
-    return {
-        "feature_count": len(expected_features),
-        "features": expected_features,
-        "source": (
-            "model"
-            if MODEL_PATH.exists()
-            else "training_dataset_schema"
-        ),
-    }
-
 
 @app.post(
     "/predict",

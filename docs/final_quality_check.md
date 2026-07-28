@@ -20,6 +20,8 @@ This document records the current completion status for ClaimGuard AI.
 - Backend refactor has started incrementally: API schemas and cached
   route dependencies were moved out of root `app.py` into `src/api/`
   without changing existing endpoint paths.
+- The first API router was extracted: `/`, `/health`, and
+  `/model/features` now live in `src/api/routers/health.py`.
 - VS Code tasks now use the project scripts instead of long raw commands.
 - `.gitignore` excludes virtual environments, `.env`, uploads, extracted files,
   field outputs, demo data, databases, model binaries, and vector stores.
