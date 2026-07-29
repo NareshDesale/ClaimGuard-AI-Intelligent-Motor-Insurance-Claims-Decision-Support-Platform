@@ -39,6 +39,10 @@ This document records the current completion status for ClaimGuard AI.
 - Policy RAG routes now live in `src/api/routers/rag.py`.
 - Document type, upload, extraction, and field extraction routes now
   live in `src/api/routers/documents.py`.
+- A lightweight backend smoke-test script was added at
+  `scripts/smoke_test.py` for post-startup verification of health,
+  model metadata, claim CRUD, completeness, validation, and optional
+  RAG readiness.
 - Root `app.py` is now a thin FastAPI setup file with router
   registration, request-ID middleware, and startup initialization.
 - FastAPI app creation moved into `src/api/main.py`; root `app.py`

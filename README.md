@@ -186,6 +186,18 @@ Open:
 http://127.0.0.1:8000/docs
 ```
 
+## Run A Backend Smoke Test
+
+After the backend is running, open another terminal and run:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\smoke_test.py
+```
+
+The smoke test checks health, model feature metadata, claim creation,
+claim lookup, document listing, completeness, validation, and RAG
+readiness. Use `--skip-rag` if the FAISS policy index is not available.
+
 ## Run The Dashboard
 
 Open a second VS Code terminal:
