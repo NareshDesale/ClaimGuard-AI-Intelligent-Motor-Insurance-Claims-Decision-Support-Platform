@@ -5,6 +5,8 @@ venv/
 # Python cache
 __pycache__/
 *.pyc
+.pytest_cache/
+.pytest_tmp/
 requirements-local.txt
 
 # Secret environment variables
