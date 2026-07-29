@@ -31,6 +31,17 @@ Runtime claim data is persisted through:
 docker compose up --build
 ```
 
+The Compose file can be checked without starting containers:
+
+```bash
+docker compose config
+```
+
+This was validated during the local final polish pass. Full
+container startup still requires free host ports `8000` and `8501`,
+Docker Desktop running, and any required model/vector files available
+through the mounted folders.
+
 Backend:
 
 ```text

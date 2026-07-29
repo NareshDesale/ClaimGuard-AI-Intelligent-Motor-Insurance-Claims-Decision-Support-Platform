@@ -51,6 +51,14 @@ This document records the current completion status for ClaimGuard AI.
 - Centralized configuration was upgraded to `pydantic-settings`, with
   upload limits, OCR settings, model paths, vector-store paths, and CORS
   origins controlled through environment variables.
+- FastAPI startup now uses a lifespan handler instead of the deprecated
+  `on_event` startup hook.
+- Local tests were verified after the lifespan cleanup:
+  `89 passed, 1 deselected, 1 warning`.
+- Docker Compose configuration was validated with `docker compose config`.
+- A Streamlit overview screenshot was added under `docs/screenshots/`.
+- The optional Gemini integration test remains key-gated and was not
+  run because no `GEMINI_API_KEY` was configured in the local `.env`.
 - VS Code tasks now use the project scripts instead of long raw commands.
 - `.gitignore` excludes virtual environments, `.env`, uploads, extracted files,
   field outputs, demo data, databases, model binaries, and vector stores.

@@ -350,6 +350,12 @@ Run tests:
 python -m pytest tests -v --tb=short -m "not integration"
 ```
 
+Latest local verification:
+
+```text
+89 passed, 1 Gemini integration test deselected, 1 dependency warning
+```
+
 Run the optional Gemini integration test only when a real key is
 configured:
 
@@ -360,6 +366,12 @@ python -m pytest tests/test_rag_gemini_integration.py -v -m integration
 ## Docker
 
 See [docs/docker.md](docs/docker.md).
+
+Compose configuration was validated locally with:
+
+```bash
+docker compose config
+```
 
 Quick start:
 
@@ -388,13 +400,16 @@ source control.
 
 ## Screenshots
 
-Add screenshots here after running the Streamlit dashboard:
+Dashboard overview:
 
-- Overview page
+![ClaimGuard AI Streamlit overview](docs/screenshots/streamlit-overview.png)
+
+Recommended additional screenshots for a final report or demo deck:
+
 - New Claim page
-- Claim Details page
-- Human Review page
-- Policy Assistant page
+- Claim Details page after extraction and validation
+- Human Review page with a recorded decision
+- Policy Assistant page with cited sources
 
 ## Demo Workflow
 
@@ -416,6 +431,15 @@ python scripts/generate_demo_data.py
 10. Ask a policy question.
 11. Generate consolidated assessment.
 12. Record human review decision.
+
+Demo recording checklist:
+
+- Show `GET /health` returning healthy or degraded-but-runnable status.
+- Show the Streamlit Overview page.
+- Create or open a demo claim.
+- Upload synthetic claim documents only.
+- Run extraction, fields, completeness, validation, assessment, and review.
+- State that fraud scores are decision-support signals, not proof.
 
 ## Future Improvements
 
