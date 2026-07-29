@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 from uuid import uuid4
 
@@ -26,6 +28,14 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(
+    application: FastAPI,
+) -> AsyncIterator[None]:
+    init_database()
+    yield
+
+
 def create_app() -> FastAPI:
     """Create and configure the ClaimGuard AI FastAPI application."""
 
@@ -36,6 +46,7 @@ def create_app() -> FastAPI:
             "prediction and policy-document question answering."
         ),
         version="1.0.0",
+        lifespan=lifespan,
     )
 
     application.include_router(health_router)
@@ -70,10 +81,6 @@ def create_app() -> FastAPI:
         )
 
         return response
-
-    @application.on_event("startup")
-    def startup() -> None:
-        init_database()
 
     return application
 

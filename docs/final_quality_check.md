@@ -43,8 +43,9 @@ This document records the current completion status for ClaimGuard AI.
   `scripts/smoke_test.py` for post-startup verification of health,
   model metadata, claim CRUD, completeness, validation, and optional
   RAG readiness.
-- Root `app.py` is now a thin FastAPI setup file with router
-  registration, request-ID middleware, and startup initialization.
+- Root `app.py` is now a compatibility entrypoint; FastAPI app
+  creation, router registration, request-ID middleware, and lifespan
+  startup initialization live in `src/api/main.py`.
 - FastAPI app creation moved into `src/api/main.py`; root `app.py`
   remains a compatibility entrypoint for `uvicorn app:app` and tests.
 - Centralized configuration was upgraded to `pydantic-settings`, with
