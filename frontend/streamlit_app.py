@@ -50,15 +50,21 @@ def inject_styles() -> None:
         }
 
         .stApp {
-            background:
-                radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 34rem),
-                linear-gradient(180deg, #f8fbff 0%, #eef5fb 100%);
+            background: #ffffff;
             color: var(--cg-ink);
         }
 
         [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #ffffff 0%, #edf5ff 100%);
+            background: #ffffff;
             border-right: 1px solid var(--cg-border);
+        }
+
+        [data-testid="stHeader"] {
+            background: #ffffff;
+        }
+
+        [data-testid="stAppViewContainer"] {
+            background: #ffffff;
         }
 
         [data-testid="stSidebar"] * {
